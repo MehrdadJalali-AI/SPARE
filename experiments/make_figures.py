@@ -284,3 +284,56 @@ if __name__ == "__main__" and os.environ.get("SPARE_E8", "1") == "1":
         fig_e8(); print("ok fig_e8")
     except Exception as e:
         print("skip fig_e8", e)
+
+
+# ----------------------------------------------------------------------------- E9 (LLM question answering)
+E9_FILE = os.path.join(RES, "e9_kgrag_gemini_gemini-3.8-flash.csv")
+E9_ORDER = [("SPARE", "SPARE (ILP+greedy)"), ("JustFreq", "JustFreq"), ("Random", "Random"), ("Degree", "Degree")]
+
+
+def fig_e9():
+    d = pd.read_csv(E9_FILE)
+    assert len(d) == 2400 and d.groupby("method").size().eq(600).all()
+    names = [n for n, _ in E9_ORDER]
+    cols = [STYLE[s][0] for _, s in E9_ORDER]
+    acc, ent, yes = [], [], []
+    for n in names:
+        g = d[d.method == n]
+        p, q = g[g.positive], g[~g.positive]
+        acc.append(((p.answer == "YES").sum() + (q.answer != "YES").sum()) / len(g))
+        ent.append(p.entailed_by_S.mean())
+        yes.append((p.answer == "YES").mean())
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.6), gridspec_kw={"width_ratios": [1, 1.45]})
+    ax = axes[0]
+    x = np.arange(len(names))
+    ax.bar(x, acc, color=cols, width=0.62)
+    for i, v in enumerate(acc):
+        ax.text(i, v + 0.008, f"{v:.3f}", ha="center", fontsize=7.5, color=INK)
+    ax.set_xticks(x, names)
+    ax.set_ylim(0, 0.78)
+    ax.set_ylabel("accuracy (600 questions)")
+    ax.set_title("(a) Accuracy", fontsize=9, loc="left", color=INK)
+    ax.grid(axis="x", visible=False)
+    ax = axes[1]
+    w = 0.36
+    ax.bar(x - w / 2, ent, width=w, color=cols, alpha=0.35, label="type entailed by kept triples")
+    ax.bar(x + w / 2, yes, width=w, color=cols, label="answered YES")
+    for i in range(len(names)):
+        ax.text(i - w / 2, ent[i] + 0.008, f"{ent[i]:.2f}", ha="center", fontsize=7, color=MUTED)
+        ax.text(i + w / 2, yes[i] + 0.008, f"{yes[i]:.2f}", ha="center", fontsize=7, color=INK)
+    ax.set_xticks(x, names)
+    ax.set_ylim(0, 0.42)
+    ax.set_ylabel("share of 300 positive questions")
+    ax.set_title("(b) Positive questions: entailed vs. answered YES", fontsize=9, loc="left", color=INK)
+    ax.grid(axis="x", visible=False)
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color="#8c8c88", alpha=0.35, label="type entailed by kept triples"),
+                       Patch(color="#8c8c88", label="answered YES")], fontsize=7.5, loc="upper right")
+    fig.tight_layout()
+    for ext in ("pdf", "png"):
+        fig.savefig(os.path.join(FIG, f"e9_llm.{ext}"), dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+if __name__ == "__main__" and os.path.exists(E9_FILE):
+    fig_e9(); print("ok fig_e9")
