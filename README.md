@@ -25,7 +25,7 @@ Knowledge Graphs under a Budget* (M. Jalali, E. Kheirkhah, B. Vu).
 | `experiments/e7_cap_check.py` | Effect of the justification cap → `results/e7_cap_check.csv` |
 | `experiments/prepare_real_data.py` | Builds the DBpedia sample and records pinned source commits in `data/external/SOURCES.json` |
 | `experiments/run_external.py` | E8: LUBM(1), OWL2Bench QL/RL⁻/EL⁻ and DBpedia → `results/e8_*.csv` |
-| `experiments/e9_kgrag_llm.py` | E9: KG-RAG question answering with an LLM (Gemini or Anthropic API; key read from an environment variable) |
+| `experiments/e9_kgrag_llm.py` | E9: KG-RAG question answering with an LLM (Gemini or Anthropic API; key read from an environment variable; resumable) |
 | `experiments/make_figures.py` | Figures and LaTeX tables from the result files (written to `manuscript/figures`, `manuscript/tables`) |
 | `data/external/` | Original LUBM and OWL2Bench data, DBpedia ontology and sample (see `data/external/README.md`) |
 | `results/` | Raw result files of all experiments reported in the article |
@@ -43,7 +43,9 @@ python experiments/make_figures.py
 ```
 
 For E9, set `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`) in your environment and run
-`python experiments/e9_kgrag_llm.py --check` first.
+`python experiments/e9_kgrag_llm.py --check` first. The reported run used
+`--provider gemini --endpoint developer --model gemini-3.8-flash --n-pos 300 --n-neg 300 --sleep 1`;
+its per-question answers (including the raw replies) are in `results/e9_kgrag_gemini_gemini-3.8-flash.csv`.
 
 ## Using SPARE on your own knowledge graph
 

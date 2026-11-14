@@ -67,16 +67,17 @@ def make_questions(full_cl, abox, n_pos, n_neg, seed):
     for s, p, o in full_cl:
         if p == TYPE and o.startswith(DBO):
             types[s].add(o)
-    pos = [(s, c) for s, cs in types.items() for c in cs if (s, TYPE, c) not in aset]
-    rng.shuffle(pos)
+    pos = sorted((s, c) for s, cs in types.items() for c in cs if (s, TYPE, c) not in aset)
+    rng.shuffle(pos)   # sorted first: set order varies between processes
     pos = pos[:n_pos]
     all_classes = sorted({c for cs in types.values() for c in cs})
     ents = sorted(types)
-    neg = []
+    neg, seen = [], set()
     while len(neg) < n_neg:
         s = rng.choice(ents)
         c = rng.choice(all_classes)
-        if c not in types[s]:
+        if c not in types[s] and (s, c) not in seen:
+            seen.add((s, c))
             neg.append((s, c))
     return [(s, c, True) for s, c in pos] + [(s, c, False) for s, c in neg]
 
@@ -99,8 +100,10 @@ def build_prompt(ctx, ent, cls):
 
 
 def parse_answer(text):
-    a = (text or "").strip().upper()
-    return "YES" if a.startswith("YES") else "NO" if a.startswith("NO") else "UNKNOWN"
+    """First standalone YES / NO / UNKNOWN in the reply (tolerates 'Answer: **YES**', etc.)."""
+    import re
+    m = re.search(r"\b(YES|NO|UNKNOWN)\b", (text or "").upper())
+    return m.group(1) if m else "UNPARSED"
 
 
 class GeminiClient:
@@ -145,7 +148,7 @@ class GeminiClient:
 
     def answer(self, prompt):
         body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0, "maxOutputTokens": 16,
+                "generationConfig": {"temperature": 0, "maxOutputTokens": 1024,
                                      "thinkingConfig": {"thinkingBudget": 0}}}
         try:
             d = self._req(self.url, body)
@@ -178,7 +181,8 @@ def ask(client, ctx, ent, cls, retries=4):
     prompt = build_prompt(ctx, ent, cls)
     for i in range(retries):
         try:
-            return parse_answer(client.answer(prompt))
+            raw = client.answer(prompt)
+            return parse_answer(raw), (raw or "").strip().replace("\n", " ")[:200]
         except Exception as e:                       # rate limits, transient errors
             err = e
             time.sleep(3 * (i + 1))
@@ -188,7 +192,7 @@ def ask(client, ctx, ent, cls, retries=4):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", choices=["gemini", "anthropic"], default="gemini")
-    ap.add_argument("--model", default="gemini-2.5-flash")
+    ap.add_argument("--model", default="gemini-3.8-flash")
     ap.add_argument("--list-models", action="store_true")
     ap.add_argument("--endpoint", choices=["auto", "developer", "vertex"], default="auto",
                     help="Gemini endpoint; auto = vertex for 'AQ.' keys, developer otherwise")
@@ -219,19 +223,44 @@ def main():
             "Degree": bl.degree_baseline(inst, B), "JustFreq": bl.justfreq_baseline(inst, B),
             "Random": bl.random_baseline(inst, B, seed=a.seed)}
     qs = make_questions(inst.closure, A, a.n_pos, a.n_neg, a.seed)
-    rows = []
+    tag = (a.provider + "_" + a.model).replace("/", "_")
+    part = os.path.join(RES, f"e9_kgrag_{tag}_partial_v2.csv")   # v2: answer parsing fixed
+    cols = ["method", "entity", "cls", "positive", "entailed_by_S", "answer", "n_context", "raw"]
+    done = set()
+    if os.path.exists(part):                      # resume an interrupted run
+        prev = pd.read_csv(part)
+        done = set(zip(prev.method, prev.entity, prev.cls))
+        print(f"resuming: {len(done)} answers already in {os.path.basename(part)}", flush=True)
+    else:
+        pd.DataFrame(columns=cols).to_csv(part, index=False)
+    total = len(sols) * len(qs)
+    n_done, t0, n_new = len(done), time.time(), 0
+    tally = defaultdict(int)
+    print(f"{total} questions to answer in total ({len(qs)} per method)", flush=True)
     for m, S in sols.items():
         cl = closure_of(T, S)
+        k = 0
         for ent, cls, is_pos in qs:
+            k += 1
+            if (m, ent, cls) in done:
+                continue
             ctx = context(S, ent, a.max_context)
-            ans = ask(client, ctx, ent, cls)
+            ans, raw = ask(client, ctx, ent, cls)
             if a.sleep:
                 time.sleep(a.sleep)
-            rows.append(dict(method=m, entity=ent, cls=cls, positive=is_pos,
-                             entailed_by_S=(ent, TYPE, cls) in cl, answer=ans, n_context=len(ctx)))
+            pd.DataFrame([dict(method=m, entity=ent, cls=cls, positive=is_pos,
+                               entailed_by_S=(ent, TYPE, cls) in cl, answer=ans,
+                               n_context=len(ctx), raw=raw)])[cols].to_csv(part, mode="a", header=False, index=False)
+            n_done += 1
+            n_new += 1
+            tally[ans] += 1
+            if k % 25 == 0:
+                eta = (time.time() - t0) / n_new * (total - n_done) / 60
+                print(f"{m}: {k}/{len(qs)} | overall {n_done}/{total} | about {eta:.0f} min left | answers so far {dict(tally)}", flush=True)
         print(m, "done", flush=True)
-    df = pd.DataFrame(rows)
-    tag = (a.provider + "_" + a.model).replace("/", "_")
+    df = pd.read_csv(part)
+    df = df.drop_duplicates(["method", "entity", "cls"])
+    assert len(df) == len(sols) * len(qs), f"incomplete: {len(df)} of {len(sols) * len(qs)} answers"
     df.to_csv(os.path.join(RES, f"e9_kgrag_{tag}.csv"), index=False)
     out = []
     for m, g in df.groupby("method"):
@@ -242,9 +271,11 @@ def main():
                         supported_yes_rate=(ps.answer == "YES").mean() if len(ps) else float("nan"),
                         unsupported_yes=(pu.answer == "YES").mean() if len(pu) else float("nan"),
                         false_yes=(n.answer == "YES").mean(), entailed_share=p.entailed_by_S.mean(),
+                        unknown_rate=(g.answer == "UNKNOWN").mean(), unparsed_rate=(g.answer == "UNPARSED").mean(),
                         context_tokens=g.n_context.mean()))
     pd.DataFrame(out).to_csv(os.path.join(RES, f"e9_kgrag_{tag}_summary.csv"), index=False)
     print(pd.DataFrame(out).round(3).to_string())
+    print("all methods done:", len(df), "answers", flush=True)
 
 
 if __name__ == "__main__":
