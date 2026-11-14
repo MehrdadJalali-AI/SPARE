@@ -316,19 +316,31 @@ def fig_e9():
     ax.grid(axis="x", visible=False)
     ax = axes[1]
     w = 0.36
-    ax.bar(x - w / 2, ent, width=w, color=cols, alpha=0.35, label="type entailed by kept triples")
-    ax.bar(x + w / 2, yes, width=w, color=cols, label="answered YES")
+    sup, uns = [], []
+    for n in names:
+        p = d[(d.method == n) & d.positive]
+        sup.append(((p.answer == "YES") & p.entailed_by_S).mean())
+        uns.append(((p.answer == "YES") & ~p.entailed_by_S).mean())
+    ax.bar(x - w / 2, ent, width=w, color=cols, alpha=0.35)
+    ax.bar(x + w / 2, sup, width=w, color=cols)
+    ax.bar(x + w / 2, uns, width=w, bottom=sup, color="white", edgecolor=cols, hatch="////", linewidth=0.8)
     for i in range(len(names)):
         ax.text(i - w / 2, ent[i] + 0.008, f"{ent[i]:.2f}", ha="center", fontsize=7, color=MUTED)
-        ax.text(i + w / 2, yes[i] + 0.008, f"{yes[i]:.2f}", ha="center", fontsize=7, color=INK)
+        ax.text(i + w / 2, sup[i] + uns[i] + 0.008, f"{sup[i] + uns[i]:.2f}", ha="center", fontsize=7, color=INK)
     ax.set_xticks(x, names)
-    ax.set_ylim(0, 0.42)
+    ax.set_ylim(0, 0.55)
     ax.set_ylabel("share of 300 positive questions")
     ax.set_title("(b) Positive questions: entailed vs. answered YES", fontsize=9, loc="left", color=INK)
     ax.grid(axis="x", visible=False)
     from matplotlib.patches import Patch
-    ax.legend(handles=[Patch(color="#8c8c88", alpha=0.35, label="type entailed by kept triples"),
-                       Patch(color="#8c8c88", label="answered YES")], fontsize=7.5, loc="upper right")
+    from matplotlib.legend_handler import HandlerTuple
+    h_ent = tuple(Patch(facecolor=c, alpha=0.35) for c in cols)
+    h_sup = tuple(Patch(facecolor=c) for c in cols)
+    h_uns = tuple(Patch(facecolor="white", edgecolor=c, hatch="////") for c in cols)
+    ax.legend([h_ent, h_sup, h_uns],
+              ["type entailed by kept triples", "YES, supported by kept triples", "YES, not supported (model knowledge)"],
+              handler_map={tuple: HandlerTuple(ndivide=None, pad=0.15)}, handlelength=3.2,
+              fontsize=7, loc="upper right")
     fig.tight_layout()
     for ext in ("pdf", "png"):
         fig.savefig(os.path.join(FIG, f"e9_llm.{ext}"), dpi=300, bbox_inches="tight")
