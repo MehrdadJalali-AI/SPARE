@@ -1,0 +1,19 @@
+{
+  "dataset": "LUBM-1",
+  "n_abox": 67464,
+  "n_targets": 37388,
+  "n_just": 126649,
+  "multi_share": 0.05651545950572376,
+  "max_just": 3,
+  "linear": false,
+  "tbox": 103,
+  "load_s": 3.5298666954040527,
+  "build_s": 7.03390908241272,
+  "loader_report": {
+    "skipped_subClassOf": 2,
+    "named_intersection_definitions": 6,
+    "skipped_literal": 33079,
+    "abox": 67464,
+    "tbox_axioms": 103
+  }
+}

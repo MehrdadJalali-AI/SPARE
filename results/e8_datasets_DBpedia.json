@@ -1,0 +1,16 @@
+{
+  "dataset": "DBpedia",
+  "n_abox": 30001,
+  "n_targets": 166408,
+  "n_just": 299282,
+  "multi_share": 0.0,
+  "max_just": 1,
+  "linear": true,
+  "tbox": 6089,
+  "load_s": 1.7669765949249268,
+  "build_s": 6.811062335968018,
+  "loader_report": {
+    "abox": 30001,
+    "tbox_axioms": 6089
+  }
+}

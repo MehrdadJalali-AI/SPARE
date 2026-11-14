@@ -1,0 +1,20 @@
+{
+  "dataset": "OWL2Bench-QL",
+  "n_abox": 31942,
+  "n_targets": 36982,
+  "n_just": 88003,
+  "multi_share": 0.0,
+  "max_just": 1,
+  "linear": true,
+  "tbox": 354,
+  "load_s": 1.5419297218322754,
+  "build_s": 2.632591724395752,
+  "loader_report": {
+    "dropped_rhs_conjunct": 19,
+    "skipped_subClassOf": 1,
+    "namespace_mapped": 91006,
+    "skipped_literal": 18458,
+    "abox": 31942,
+    "tbox_axioms": 354
+  }
+}

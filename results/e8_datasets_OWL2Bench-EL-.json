@@ -1,0 +1,22 @@
+{
+  "dataset": "OWL2Bench-EL-",
+  "n_abox": 32047,
+  "n_targets": 34647,
+  "n_just": 87783,
+  "multi_share": 0.35526885444627243,
+  "max_just": 3,
+  "linear": false,
+  "tbox": 312,
+  "load_s": 1.4473352432250977,
+  "build_s": 3.8052923679351807,
+  "loader_report": {
+    "dropped_rhs_conjunct": 11,
+    "equivalentClass_rhs_only": 1,
+    "skipped_equivalentClass": 1,
+    "namespace_mapped": 91006,
+    "skipped_literal": 18447,
+    "abox": 32047,
+    "tbox_axioms": 313,
+    "dropped_transitive_axioms": 1
+  }
+}

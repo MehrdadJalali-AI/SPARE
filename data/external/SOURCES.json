@@ -1,0 +1,30 @@
+{
+  "sources": {
+    "owl2bench": [
+      "https://github.com/kracr/owl2bench.git",
+      "5a27536c8e7f7621b34c61c8a57ed9eb63e7829a"
+    ],
+    "joie": [
+      "https://github.com/JunhengH/joie-kdd19.git",
+      "6ce57ae30fae67bf6e2f48e7e6db35dbab3e0201"
+    ],
+    "zzxx-husky_LUBM-COPY": [
+      "https://github.com/zzxx-husky/LUBM-COPY.git",
+      "3bdf5e65d6518cb30e299d74156f4bb27ed586e8"
+    ],
+    "wouterbeek_lubm": [
+      "https://github.com/wouterbeek/lubm.git",
+      "003eada5de5ed1919b83acd9443942adb8532248"
+    ],
+    "dbo-tracker": [
+      "https://github.com/dbpedia/ontology-tracker.git",
+      "32f457a42b910e39ef087b26f1664bd8d507518b"
+    ]
+  },
+  "dbpedia": {
+    "subjects_sampled": 3798,
+    "triples": 30001,
+    "relations_matched": 293,
+    "types_matched": 220
+  }
+}
